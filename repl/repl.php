@@ -6,7 +6,7 @@ require_once __DIR__ . '/../engine/Executor.php';
 $parser = new SQLParser();
 $executor = new Executor();
 
-echo "PHP Mini RDBMS\nType 'exit' to quit\n";
+echo "PHP Mini RDBMS\nType exit to quit\n";
 
 while (true) {
     echo "rdbms> ";
@@ -19,6 +19,6 @@ while (true) {
         $result = $executor->execute($query);
         print_r($result);
     } catch (Exception $e) {
-        echo "Error: " . $e->getMessage() . PHP_EOL;
+        echo "Error: {$e->getMessage()}\n";
     }
 }

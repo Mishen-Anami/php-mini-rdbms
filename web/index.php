@@ -6,7 +6,9 @@ require_once __DIR__ . '/../engine/Executor.php';
 $parser = new SQLParser();
 $executor = new Executor();
 
-if ($_POST['sql'] ?? false) {
+$result = null;
+
+if (!empty($_POST['sql'])) {
     try {
         $query = $parser->parse($_POST['sql']);
         $result = $executor->execute($query);
@@ -21,4 +23,4 @@ if ($_POST['sql'] ?? false) {
     <button>Run SQL</button>
 </form>
 
-<pre><?php print_r($result ?? null); ?></pre>
+<pre><?php print_r($result); ?></pre>
