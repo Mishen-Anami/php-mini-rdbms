@@ -13,106 +13,104 @@ class Executor
 
     public function execute(array $query)
     {
-        switch ($query['type']) {
-
-            case 'create':
-                $this->storage->createTable($query['table'], $query['schema']);
-                return "Table created";
-
-            case 'insert':
-                return $this->insert($query);
-
-            case 'select':
-                return $this->select($query);
-
-            case 'join':
-                return $this->join($query);
-
-            default:
-                throw new Exception("Unknown query type");
-        }
+        return match ($query['type']) {
+            'create' => $this->create($query),
+            'insert' => $this->insert($query),
+            'select' => $this->select($query),
+            'update' => $this->update($query),
+            'delete' => $this->delete($query),
+            'join'   => $this->join($query),
+            default  => throw new Exception("Unknown query")
+        };
     }
 
-    private function insert(array $query)
+    private function create($q)
     {
-        $table = $this->storage->loadTable($query['table']);
+        $this->storage->createTable($q['table'], $q['schema']);
+        return "Table created";
+    }
 
-        $row = array_combine(
-            array_keys($table['schema']),
-            $query['values']
-        );
-
+    private function insert($q)
+    {
+        $table = $this->storage->loadTable($q['table']);
+        $row = array_combine(array_keys($table['schema']), $q['values']);
         $this->validateConstraints($table, $row);
-
         $table['rows'][] = $row;
-        $table['indexes'] = []; // invalidate indexes
-
-        $this->storage->saveTable($query['table'], $table);
+        $table['indexes'] = [];
+        $this->storage->saveTable($q['table'], $table);
         return "Row inserted";
     }
 
-    private function validateConstraints(array $table, array $newRow): void
+    private function select($q)
     {
-        foreach ($table['schema'] as $col => $meta) {
-            foreach ($table['rows'] as $row) {
-                if (
-                    ($meta['primary'] || $meta['unique']) &&
-                    $row[$col] == $newRow[$col]
-                ) {
-                    throw new Exception("Constraint violation on column $col");
-                }
-            }
-        }
-    }
-
-    private function select(array $query)
-    {
-        $table = $this->storage->loadTable($query['table']);
+        $table = $this->storage->loadTable($q['table']);
         $rows = $table['rows'];
 
-        if ($query['where']) {
-            $col = $query['where']['column'];
-            $val = $query['where']['value'];
-
-            if (!isset($table['indexes'][$col])) {
-                $this->buildIndex($table, $col);
-            }
-
-            $rows = [];
-            foreach ($table['indexes'][$col][$val] ?? [] as $i) {
-                $rows[] = $table['rows'][$i];
-            }
-
-            $this->storage->saveTable($query['table'], $table);
+        if ($q['where']) {
+            $rows = array_filter($rows, fn($r) =>
+                $r[$q['where']['column']] == $q['where']['value']
+            );
         }
-
         return array_values($rows);
     }
 
-    private function buildIndex(array &$table, string $column): void
+    private function update($q)
     {
-        $index = [];
-        foreach ($table['rows'] as $i => $row) {
-            $index[$row[$column]][] = $i;
-        }
-        $table['indexes'][$column] = $index;
-    }
+        $table = $this->storage->loadTable($q['table']);
+        $count = 0;
 
-    private function join(array $query)
-    {
-        $left = $this->storage->loadTable($query['left']);
-        $right = $this->storage->loadTable($query['right']);
-
-        $results = [];
-
-        foreach ($left['rows'] as $l) {
-            foreach ($right['rows'] as $r) {
-                if ($l[$query['left_col']] == $r[$query['right_col']]) {
-                    $results[] = array_merge($l, $r);
-                }
+        foreach ($table['rows'] as &$row) {
+            if ($row[$q['where']['column']] == $q['where']['value']) {
+                $row[$q['set']['column']] = $q['set']['value'];
+                $count++;
             }
         }
 
-        return $results;
+        $table['indexes'] = [];
+        $this->storage->saveTable($q['table'], $table);
+        return "$count row(s) updated";
+    }
+
+    private function delete($q)
+    {
+        $table = $this->storage->loadTable($q['table']);
+        $before = count($table['rows']);
+
+        $table['rows'] = array_values(array_filter(
+            $table['rows'],
+            fn($r) => $r[$q['where']['column']] != $q['where']['value']
+        ));
+
+        $table['indexes'] = [];
+        $this->storage->saveTable($q['table'], $table);
+
+        return ($before - count($table['rows'])) . " row(s) deleted";
+    }
+
+    private function join($q)
+    {
+        $left = $this->storage->loadTable($q['left']);
+        $right = $this->storage->loadTable($q['right']);
+        $out = [];
+
+        foreach ($left['rows'] as $l) {
+            foreach ($right['rows'] as $r) {
+                if ($l[$q['left_col']] == $r[$q['right_col']]) {
+                    $out[] = array_merge($l, $r);
+                }
+            }
+        }
+        return $out;
+    }
+
+    private function validateConstraints($table, $newRow)
+    {
+        foreach ($table['schema'] as $col => $meta) {
+            foreach ($table['rows'] as $row) {
+                if (($meta['primary'] || $meta['unique']) && $row[$col] == $newRow[$col]) {
+                    throw new Exception("Constraint violation on $col");
+                }
+            }
+        }
     }
 }
