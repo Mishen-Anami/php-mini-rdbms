@@ -1,3 +1,8 @@
+#I have deployed it on live server with my domain here 
+##
+https://kahoyatti.com/php-mini-rdbms/web/index.php 
+
+##
 # PHP Mini RDBMS
 
 A minimal relational database management system built entirely from scratch in PHP.
@@ -22,7 +27,7 @@ The goal is clarity of design and correctness rather than production completenes
 ## Supported SQL
 ```sql
 CREATE TABLE users (id INT PRIMARY KEY, email TEXT UNIQUE, name TEXT)
-INSERT INTO users VALUES (1, 'a@test.com', 'Alice')
+INSERT INTO users VALUES (1, 'mishenanami20@gmail.com', 'Mishen')
 SELECT * FROM users WHERE id = 1
 UPDATE users SET name = 'Bob' WHERE id = 1
 DELETE FROM users WHERE id = 1
@@ -68,3 +73,5 @@ Purpose
 This project was built to demonstrate understanding of database internals, systems thinking, and the ability to design and implement core infrastructure from first principles.
 
 I have deployed it on live server
+access via this link 
+https://kahoyatti.com/php-mini-rdbms/web/index.php
